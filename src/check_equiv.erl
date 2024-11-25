@@ -54,13 +54,16 @@ get_typeinfo(Dir) ->
     TyperOut = os:cmd("typer -I include -r " ++ Dir),
     typing:types(TyperOut).
 
-check_equiv(OrigDir, RefacDir) ->
+check_equiv(OrigDir, RefacDir, IsVerbose) ->
     Configs = config:load_config(),
+    equivchecker_utils:log(IsVerbose, "Loaded config", Configs),
     typing:ensure_plt(Configs),
 
     DiffOutput = os:cmd("diff -x '.git' -u0 -br " ++ OrigDir ++ " " ++ RefacDir),
     Diffs = diff:diff(DiffOutput),
+    equivchecker_utils:log(IsVerbose, "Diffs found", Diffs),
     ModFiles = diff:modified_files(Diffs),
+    equivchecker_utils:log(IsVerbose, "Modified files", ModFiles),
     % TODO Compile everything for now
     % Files = string:split(string:trim(os:cmd("find -name '*.erl'")), "\n", all),
 
@@ -71,12 +74,15 @@ check_equiv(OrigDir, RefacDir) ->
                           ModFiles),
     {OrigTypeInfo, RefacTypeInfo} = {get_typeinfo(OrigDir), get_typeinfo(RefacDir)},
     {OrigModFuns, RefacModFuns} = functions:modified_functions(Diffs, FileInfos),
+    equivchecker_utils:log(IsVerbose, "Original functions", OrigModFuns),
+    equivchecker_utils:log(IsVerbose, "Refactored functions", RefacModFuns),
 
     CallGraph = functions:callgraph(OrigDir, RefacDir),
     Types = typing:add_types(OrigTypeInfo, RefacTypeInfo),
 
     % Gets back the functions that have to be tested
     FunsToTest = slicing:scope(OrigModFuns, RefacModFuns, CallGraph, Types),
+    equivchecker_utils:log(IsVerbose, "Testing functions", RefacModFuns),
 
     % Compile the necessary modules into two separate folders
     % This is needed because QuickCheck has to evaluate to old and the new
@@ -87,19 +93,23 @@ check_equiv(OrigDir, RefacDir) ->
     RefacFiles = lists:map(fun(File) -> filename:join([RefacDir, File]) end, ModFiles),
 
     Seed = os:timestamp(), % seed for the PropEr generator
+    equivchecker_utils:log(IsVerbose, "Seed used for test generation", Seed),
+
     compile(OrigFiles, ?ORIGINAL_BIN_FOLDER, Seed),
     compile(RefacFiles, ?REFACTORED_BIN_FOLDER, Seed),
 
     unzip_modules(),
 
     {OrigNode, RefacNode} = start_nodes(),
+    equivchecker_utils:log(IsVerbose, "Started testing nodes"),
 
     % This is needed because PropEr needs the source for constructing the generator
     {ok, Dir} = file:get_cwd(),
     file:set_cwd(OrigDir),
 
-    Result = equivchecker_testing:run_tests(FunsToTest, OrigNode, RefacNode, Types, CallGraph),
+    Result = equivchecker_testing:run_tests(FunsToTest, OrigNode, RefacNode, Types, CallGraph, IsVerbose),
 
     file:set_cwd(Dir),
     stop_nodes(OrigNode, RefacNode),
+    equivchecker_utils:log(IsVerbose, "Stopped testing nodes"),
     Result.

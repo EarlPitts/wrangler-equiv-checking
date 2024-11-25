@@ -1,6 +1,6 @@
 %% This module is for extracting information from the diff, and presenting it
 %% The main unit of the differences between two versions is a hunk, which contains
-%% all the information about a change that is needed for finding out what has to be testsd
+%% all the information about a change that is needed for finding out what has to be tested
 -module(diff).
 
 -include("equivchecker.hrl").
@@ -74,13 +74,13 @@ parse_diff(DiffStr) ->
 -spec extract_file(string()) -> filename().
 extract_file(DiffLine) ->
     Options = [global, {capture, [1,2], list}],
-    {match, [[OrigFile, RefacFile]]} = re:run(DiffLine, ".*?(/.*?\.erl).*?(/.*?\.erl)", Options),
+    {match, [[OrigFile, RefacFile]]} = re:run(DiffLine, ".*?(/.*?\\.erl).*?(/.*?\\.erl)", Options),
     equivchecker_utils:common_filename_postfix(OrigFile, RefacFile).
 
 % Checks if the given file in the diff output is erlang source code
 -spec is_erl_source([diff_line()]) -> boolean().
 is_erl_source(Header) ->
-    case re:run(Header, ".*(.*\.erl).*") of
+    case re:run(Header, ".*(.*\\.erl).*") of
         {match,_}   -> true;
         nomatch     -> false
     end.

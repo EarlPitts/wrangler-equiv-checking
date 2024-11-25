@@ -112,7 +112,7 @@ callgraph(OrigDir, RefacDir) ->
 -spec find_callers({filename(), atom(), arity()}, string()) -> [{filename(), mfa()}].
 find_callers({FileName, FunName, Arity}, Dir) ->
     AbsDir = filename:absname(Dir),
-    AbsFileName = AbsDir ++ "/" ++ filename:basename(FileName),
+    AbsFileName = AbsDir ++ "/" ++ FileName,
     Leader = equivchecker_utils:disable_output(),
     {_, Funs} = wrangler_code_inspector_lib:calls_to_fun_1(AbsFileName, FunName, Arity, [AbsDir], 4),
     equivchecker_utils:enable_output(Leader),

@@ -1,19 +1,19 @@
 {"1.2.0",
-[{<<"jsone">>,{pkg,<<"jsone">>,<<"1.8.0">>},0},
+[{<<"jsone">>,{pkg,<<"jsone">>,<<"1.8.1">>},0},
  {<<"parse_trans">>,
-  {git,"git@github.com:uwiger/parse_trans.git",
-       {ref,"cdb01ba260ba9a00b2aafa17affead0f6fac081c"}},
+  {git,"https://github.com/uwiger/parse_trans.git",
+       {ref,"d99fb36755c813a5db23e6f93741aa58323ef911"}},
   0},
  {<<"proper">>,{pkg,<<"proper">>,<<"1.4.0">>},0},
  {<<"wrangler">>,
-  {git,"git@github.com:RefactoringTools/wrangler.git",
-       {ref,"e8b0159e136768f81a5ffb6d6d6ddd79ae55b007"}},
+  {git,"https://github.com/RefactoringTools/wrangler.git",
+       {ref,"0fac2d415952bc764dd4f283b89fa3c6fd2b39f1"}},
   0}]}.
 [
 {pkg_hash,[
- {<<"jsone">>, <<"347FF1FA700E182E1F9C5012FA6D737B12C854313B9AE6954CA75D3987D6C06D">>},
+ {<<"jsone">>, <<"6BC74D3863D55D420077346DA97C601711017A057F2FD1DF65D6D65DD562FBAB">>},
  {<<"proper">>, <<"89A44B8C39D28BB9B4BE8E4D715D534905B325470F2E0EC5E004D12484A79434">>}]},
 {pkg_hash_ext,[
- {<<"jsone">>, <<"08560B78624A12E0B5E7EC0271EC8CA38EF51F63D84D84843473E14D9B12618C">>},
+ {<<"jsone">>, <<"C78918124148C51A7A84C678E39BBC6281F8CB582F1D88584628A98468E99738">>},
  {<<"proper">>, <<"18285842185BD33EFBDA97D134A5CB5A0884384DB36119FEE0E3CFA488568CBB">>}]}
 ].

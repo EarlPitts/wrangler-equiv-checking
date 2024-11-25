@@ -3,6 +3,14 @@
 - Uses property based testing to check the equivalence of code refactored by Wrangler
 - Compares folders or commits of the same codebase with the original and refactored code (git)
 
+## Disclaimer
+
+Randomized testing in itself can never be sufficient for eliminating the possibility of bugs.
+EquivcheckEr will never report false positives, but its entirely possible for it to omit true positives,
+so it cannot replace engineering discipline.
+As Dijkstra once said:
+> "Testing shows the presence, not the absence of bugs"
+
 ## Dependencies
 
 - Erlang/OTP 26 or later

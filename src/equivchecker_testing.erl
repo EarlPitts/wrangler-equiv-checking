@@ -2,8 +2,8 @@
 
 -type type() :: string().
 
--export([run_tests/5,
-         run_tests/6,
+-export([run_tests/6,
+         run_tests/7,
          eval_proc/3,
          eval_func/4]).
 
@@ -11,12 +11,12 @@
 
 -include_lib("proper/include/proper.hrl").
 
-run_tests(Functions, OrigNode, RefacNode, Types, CallGraph) ->
-    run_tests(Functions, OrigNode, RefacNode, Types, CallGraph, []).
+run_tests(Functions, OrigNode, RefacNode, Types, CallGraph, IsVerbose) ->
+    run_tests(Functions, OrigNode, RefacNode, Types, CallGraph, [], IsVerbose).
 
-run_tests([], _, _, _, _, Results) ->
+run_tests([], _, _, _, _, Results, _) ->
     Results;
-run_tests(Functions, OrigNode, RefacNode, Types, CallGraph, Results) ->
+run_tests(Functions, OrigNode, RefacNode, Types, CallGraph, Results, IsVerbose) ->
     % proper:quickchek/2 stops the server, so it has to be started every time
     proper_typeserver:start(),
     ProperOpts = [long_result, {on_output, fun(X,Y) -> equivchecker_utils:count_tests(X,Y) end}],
@@ -33,12 +33,15 @@ run_tests(Functions, OrigNode, RefacNode, Types, CallGraph, Results) ->
     Res = collect_results(length(FunctionsTyped), []),
 
     FailedFuns = lists:filter(fun({_, _, Eq}) -> Eq =/= true end, Res),
+    equivchecker_utils:log(IsVerbose, "Failed functions: ", FailedFuns),
+
     FailedMFA = lists:map(fun({FileName, {M,F,A}, _}) -> {FileName, {M, F, A}} end, FailedFuns),
 
     Callers = lists:uniq(lists:flatmap(fun({FileName, {_,F,A}}) -> CallGraph({FileName, F, A}, refactored) end, FailedMFA)),
+    equivchecker_utils:log(IsVerbose, "Callers of failed functions: ", Callers),
     CallersTyped = lists:map(fun({FileName, MFA}) -> {FileName, MFA, Types(MFA, refactored)} end, Callers),
 
-    run_tests(CallersTyped, OrigNode, RefacNode, Types, CallGraph, FailedFuns ++ Results).
+    run_tests(CallersTyped, OrigNode, RefacNode, Types, CallGraph, FailedFuns ++ Results, IsVerbose).
 
 collect_results(0, Res) -> Res;
 collect_results(Num, Res) ->

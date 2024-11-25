@@ -1,0 +1,7 @@
+diff -x .git -u0 -br orig/a/test2.erl refac/a/test2.erl
+diff -x .git -u0 -br orig/test2.erl refac/test2.erl
+diff -x .git -u0 -br orig/test3.erl refac/test3.erl
+diff -x .git -u0 -br orig/test4.erl refac/test4.erl
+diff -x .git -u0 -br orig/test5.erl refac/test5.erl
+diff -x .git -u0 -br orig/test6.erl refac/test6.erl
+diff -x .git -u0 -br orig/test.erl refac/test.erl

@@ -59,54 +59,134 @@ transform_send(T) ->
 %
 % Later it would be better to look at the match clasuses inside the receive and generate
 % data based on that
-transform_receive({Meg,Sec,Mic},T) ->
+transform_receive(Seed, T) ->
     L = erl_syntax:get_pos(T),
-    {block,
-      L,
-      [{match,
-        L,
-        {tuple,L,[{atom,L,ok},{var,L,'RandomData'}]},
-        {call,
-         L,
-         {remote,L,{atom,L,proper_gen},{atom,L,pick}},
-         [{call,
-           L,
-           {remote,
-            L,
-            {atom,L,proper_types},
-            {atom,L,list}},
-           [{call,
-             L,
-             {remote,
-              L,
-              {atom,L,proper_types},
-              {atom,L,any}},
-             []}]},
-          {integer,L,3},
-          {tuple,
-           L,
-           [{integer,L,Meg},
-            {integer,L,Sec},
-            {integer,L,Mic}]}
-         ]}},
-       {call,
-        L,
-        {remote,L,{atom,L,lists},{atom,L,map}},
-        [{'fun',
-          L,
-          {clauses,
-           [{clause,
-             L,
-             [{var,L,'X'}],
-             [],
-             [{op,
-               L,
-               '!',
-               {call,L,{atom,L,self},[]},
-               {var,L,'X'}}]}]}},
-         {var,L,'RandomData'}]},
-       T
-      ]}.
+    Patterns = extract_receive_clauses(T),
+    Generators = [pattern_to_generator(Pattern) || Pattern <- Patterns],
+    GeneratorFunctions = generate_random_data(Generators, L, Seed),
+
+    MapFun = erl_syntax:fun_expr([
+        erl_syntax:clause([erl_syntax:variable('Function')],
+        [],
+        [
+            erl_syntax:match_expr(
+                erl_syntax:tuple([
+                    erl_syntax:atom(ok),
+                    erl_syntax:variable('Result')
+                ]),
+                erl_syntax:variable('Function')
+            ),
+            erl_syntax:variable('Result')
+        ])
+    ]),
+
+    %% Reverting fixes the location number issue
+    RevertedMapFun = erl_syntax:revert(MapFun),
+
+    GeneratorList = erl_syntax:list(GeneratorFunctions),
+    RevertedGeneratorList = erl_syntax:revert(GeneratorList),
+    
+    MapCall = erl_syntax:application(
+        erl_syntax:module_qualifier(
+            erl_syntax:atom(lists),
+            erl_syntax:atom(map)
+        ),
+        [RevertedMapFun, RevertedGeneratorList]
+    ),
+    RevertedMapCall = erl_syntax:revert(MapCall),
+
+    SendLC = erl_syntax:list_comp(
+        erl_syntax:abstract({op, L, '!',
+            {call, L, {atom, L, self}, []},
+            {var, L, 'Item'}}),
+        [erl_syntax:abstract({generate, L, 
+            {var, L, 'Item'}, 
+            {var, L, 'RandomData'}})]
+    ),
+    RevertedSendLC = erl_syntax:revert(SendLC),
+
+    Block = erl_syntax:block_expr([
+        erl_syntax:match_expr(
+            erl_syntax:variable('RandomData'),
+            RevertedMapCall 
+        ),
+        RevertedSendLC,
+        T
+    ]),
+
+    RevertedBlock = erl_syntax:revert(Block),
+
+    % Pretty printing the AST before reverting
+    % io:format("Generated AST:~n~s~n", [erl_prettypr:format(RevertedBlock)]),
+
+    RevertedBlock.
+
+generate_random_data(Generators, L, Seed) ->
+    [begin
+        Call = erl_syntax:application(
+            erl_syntax:module_qualifier(
+                erl_syntax:atom(proper_gen),
+                erl_syntax:atom(pick)
+            ),
+            [
+                Generator,
+                erl_syntax:integer(100),
+                erl_syntax:abstract(Seed)
+            ]
+        ),
+        CallWithPos = erl_syntax_lib:map(
+            fun(Node) -> erl_syntax:set_pos(Node, L) end,
+            Call
+        ),
+        erl_syntax:revert(CallWithPos)
+    end || Generator <- Generators].
+
+extract_receive_clauses({'receive', _LocationInfo, Clauses}) ->
+    PatternList = [ Patterns || {clause, _Location, Patterns, _Guards, _Body} <- Clauses],
+    lists:flatten(PatternList);
+
+extract_receive_clauses(_Other) ->
+    [].
+
+pattern_to_generator(Pattern) ->
+    L = erl_syntax:get_pos(Pattern),
+    Generator = case erl_syntax:type(Pattern) of
+        tuple ->
+            Elements = erl_syntax:tuple_elements(Pattern),
+            ElementsGenerators = [pattern_to_generator(Element) || Element <- Elements],
+            {call, proper_types, tuple, ElementsGenerators};
+        atom ->
+            Value = erl_syntax:atom_value(Pattern),
+            {call, proper_types, return, [Value]};
+        variable ->
+            {call, proper_types, any, []};
+        integer ->
+            {call, proper_types, integer, []};
+        string ->
+            {call, proper_types, string, []};
+        list ->
+            Elements = erl_syntax:list_elements(Pattern),
+            case Elements of
+                [] -> {call, proper_types, list, [{call, proper_types, any, []}]};
+                _ -> 
+                    ElementsGenerators = [pattern_to_generator(Element) || Element <- Elements],
+                    {call, proper_types, list, ElementsGenerators}
+            end;
+        pid ->
+            {call, proper_types, pid, []};
+        binary ->
+            {call, proper_types, binary, []};
+        Type ->
+            io:format("Unhandled pattern type: ~p~n", [Type]),
+            {call, proper_types, any, []}
+    end,
+    
+    erl_syntax:revert(
+        erl_syntax_lib:map(
+            fun(Node) -> erl_syntax:set_pos(Node, L) end,
+            erl_syntax:abstract(Generator)
+        )
+    ).
 
 % get_types(Clauses) ->
 %     erlang:display(erl_syntax_lib:analyze_form(Clauses)).
